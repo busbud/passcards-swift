@@ -12,11 +12,7 @@ private extension Field {
     }
 
     var string: String? {
-        let body = part.body
-        return body.withUnsafeBufferPointer { buffer in
-            guard let uptr = buffer.baseAddress else { return nil }
-            return uptr.withMemoryRebound(to: CChar.self, capacity: body.count, String.init(utf8String:))
-        }
+        return try? String(bytes: part.body)
     }
 }
 
@@ -141,8 +137,17 @@ final class VanityCollection: RouteCollection {
                 .run()
             let deviceTokens = registrations.flatMap { $0.deviceToken }
 
-            let message = ApplePushMessage(priority: .energyEfficient, payload: Payload(), sandbox: false)
-            self.apns.send(message, to: deviceTokens, perDeviceResultHandler: { _ in })
+            let message = ApplePushMessage(topic: pass.passTypeIdentifier, priority: .immediately, payload: Payload(), sandbox: false)
+            self.apns.send(message, to: deviceTokens, perDeviceResultHandler: { result in
+                switch result {
+                case .success(_, _, let serviceStatus):
+                    print("Service status: \(serviceStatus)")
+                case .networkError(let error):
+                    print("Network error: \(error)")
+                case .error(_, _, let error):
+                    print("APNS error: \(error)")
+                }
+            })
 
             return Response(status: .seeOther, headers: [.location: String(describing: request.uri)])
         }
