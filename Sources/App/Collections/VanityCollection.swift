@@ -12,11 +12,7 @@ private extension Field {
     }
 
     var string: String? {
-        let body = part.body
-        return body.withUnsafeBufferPointer { buffer in
-            guard let uptr = buffer.baseAddress else { return nil }
-            return uptr.withMemoryRebound(to: CChar.self, capacity: body.count, String.init(utf8String:))
-        }
+        return try? String(bytes: part.body)
     }
 }
 
