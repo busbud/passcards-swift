@@ -13,20 +13,15 @@ $ .build/release/App
 
 | Key | Description |
 | --- | ----------- |
-| APNS_KEY_ID | APNS key ID |
-| APNS_PRIVATE_KEY | APNS private key content |
-| APNS_TEAM_ID | APNS team ID |
-| APNS_TOPIC | APNS (certificate) topic |
-| PG_DBNAME | Postgres database name |
-| PG_HOST | Postgres host |
-| PG_PASSWORD | Postgres password |
-| PG_PORT | Postgres port |
-| PG_USER | Postgres user |
-| S3_ACCESS_KEY | S3 access key |
-| S3_BUCKET | S3 bucket name |
-| S3_REGION | S3 bucket region |
-| S3_SECRET_KEY | S3 access secret key |
-| UPDATE_PASSWORD | Update password *(unset == unlimited access)* |
+| `APNS_KEY_ID` | APNS key ID |
+| `APNS_PRIVATE_KEY` | APNS private key content (*max 63 characters per line*) |
+| `APNS_TEAM_ID` | APNS team ID |
+| `DATABASE_URL` | Postgres database URL (`postgres://<user>:<password>@<host>:<port>/<dbname>`)
+| `S3_ACCESS_KEY` | S3 access key |
+| `S3_BUCKET` | S3 bucket name |
+| `S3_REGION` | S3 bucket region |
+| `S3_SECRET_KEY` | S3 access secret key |
+| `UPDATE_PASSWORD` | Update password (*unset == unlimited access*) |
 
 ## Deployment
 
