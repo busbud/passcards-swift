@@ -62,7 +62,7 @@ final class VanityCollection: RouteCollection {
                 let pass = try self.findPass(vanityName: vanityName),
                 let passPath = pass.passPath
             else {
-                return try self.droplet.view.make("welcome")
+                return EmptyResponse(status: .notFound)
             }
 
             let updatedAt = pass.updatedAt ?? Date()
@@ -76,15 +76,15 @@ final class VanityCollection: RouteCollection {
 
         builder.post(String.self) { request, passName in
             guard self.isAuthenticated(request: request) else {
-                return Response(status: .unauthorized)
+                return EmptyResponse(status: .unauthorized)
             }
 
             guard let vanityName = self.parseVanityName(from: passName) else {
-                return Response(status: .notFound)
+                return EmptyResponse(status: .notFound)
             }
 
             guard try self.findPass(vanityName: vanityName) == nil else {
-                return Response(status: .preconditionFailed)
+                return EmptyResponse(status: .preconditionFailed)
             }
 
             guard let formData = request.formData,
@@ -93,7 +93,7 @@ final class VanityCollection: RouteCollection {
                 let serialNumber = formData["serial_number"]?.string,
                 let passData = formData["pass"]?.data
             else {
-                return Response(status: .badRequest)
+                return EmptyResponse(status: .badRequest)
             }
 
             let passPath = try Storage.upload(bytes: passData, fileName: vanityName, fileExtension: "pkpass", mime: "application/vnd.apple.pkpass")
@@ -107,24 +107,24 @@ final class VanityCollection: RouteCollection {
             pass.updatedAt = Date()
             try pass.save()
 
-            return Response(status: .created)
+            return EmptyResponse(status: .created)
         }
 
         builder.put(String.self) { request, passName in
             guard self.isAuthenticated(request: request) else {
-                return Response(status: .unauthorized)
+                return EmptyResponse(status: .unauthorized)
             }
 
             guard let vanityName = self.parseVanityName(from: passName),
                 var pass = try self.findPass(vanityName: vanityName)
             else {
-                return Response(status: .notFound)
+                return EmptyResponse(status: .notFound)
             }
 
             guard let formData = request.formData,
                 let passData = formData["pass"]?.data
             else {
-                return Response(status: .badRequest)
+                return EmptyResponse(status: .badRequest)
             }
 
             let passPath = try Storage.upload(bytes: passData, fileName: vanityName, fileExtension: "pkpass", mime: "application/vnd.apple.pkpass")
@@ -148,8 +148,10 @@ final class VanityCollection: RouteCollection {
                     print("APNS error: \(error)")
                 }
             })
-
-            return Response(status: .seeOther, headers: [.location: String(describing: request.uri)])
+            
+            return Response(status: .seeOther,
+                            headers: [.location: String(describing: request.uri),
+                                      .contentType: "application/vnd.apple.pkpass"])
         }
     }
 }
