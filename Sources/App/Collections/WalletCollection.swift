@@ -117,38 +117,38 @@ final class WalletCollection: RouteCollection {
 
                     registrations.post(String.self, String.self) { request, passTypeIdentifier, serialNumber in
                         guard let pushToken = try request.json?.extract("pushToken") as String? else {
-                            return Response(status: .badRequest)
+                            return EmptyResponse(status: .badRequest)
                         }
 
                         guard let pass = try self.findPass(passTypeIdentifier: passTypeIdentifier, serialNumber: serialNumber) else {
-                            return Response(status: .notFound)
+                            return EmptyResponse(status: .notFound)
                         }
 
                         guard self.isAuthenticated(request: request, pass: pass) else {
-                            return Response(status: .unauthorized)
+                            return EmptyResponse(status: .unauthorized)
                         }
 
                         let deviceLibraryIdentifier = try request.parameters.extract("deviceLibraryIdentifier") as String
                         let created = try self.registerDevice(pass: pass, deviceLibraryIdentifier: deviceLibraryIdentifier, pushToken: pushToken)
-                        return Response(status: created ? .created : .ok)
+                        return EmptyResponse(status: created ? .created : .ok)
                     }
 
                     registrations.delete(String.self, String.self) { request, passTypeIdentifier, serialNumber in
                         guard let pass = try self.findPass(passTypeIdentifier: passTypeIdentifier, serialNumber: serialNumber) else {
-                            return Response(status: .notFound)
+                            return EmptyResponse(status: .notFound)
                         }
 
                         guard self.isAuthenticated(request: request, pass: pass) else {
-                            return Response(status: .unauthorized)
+                            return EmptyResponse(status: .unauthorized)
                         }
 
                         let deviceLibraryIdentifier = try request.parameters.extract("deviceLibraryIdentifier") as String
                         guard let registration = try self.findRegistration(pass: pass, deviceLibraryIdentifier: deviceLibraryIdentifier) else {
-                            return Response(status: .notFound)
+                            return EmptyResponse(status: .notFound)
                         }
 
                         try registration.delete()
-                        return Response(status: .ok)
+                        return EmptyResponse(status: .ok)
                     }
                 }
             }
@@ -156,20 +156,20 @@ final class WalletCollection: RouteCollection {
             v1.group("passes") { passes in
                 passes.get(String.self, String.self) { request, passTypeIdentifier, serialNumber in
                     guard let pass = try self.findPass(passTypeIdentifier: passTypeIdentifier, serialNumber: serialNumber) else {
-                        return Response(status: .notFound)
+                        return EmptyResponse(status: .notFound)
                     }
 
                     guard self.isAuthenticated(request: request, pass: pass) else {
-                        return Response(status: .unauthorized)
+                        return EmptyResponse(status: .unauthorized)
                     }
 
                     let updatedAt = pass.updatedAt ?? Date()
                     if let dateString = request.headers[.ifModifiedSince], let date = rfc2616DateFormatter.date(from: dateString), date > updatedAt {
-                        return Response(status: .notModified)
+                        return EmptyResponse(status: .notModified)
                     }
 
                     guard let passPath = pass.passPath else {
-                        return Response(status: .noContent)
+                        return EmptyResponse(status: .noContent)
                     }
 
                     let headers: [HeaderKey: String] = [
@@ -183,11 +183,11 @@ final class WalletCollection: RouteCollection {
 
             v1.post("log") { request in
                 guard let logs = try request.json?.extract("logs") as [String]? else {
-                    return Response(status: .badRequest)
+                    return EmptyResponse(status: .badRequest)
                 }
 
                 self.log(messages: logs)
-                return Response(status: Status.ok)
+                return EmptyResponse(status: Status.ok)
             }
         }
     }
