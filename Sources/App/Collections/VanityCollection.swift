@@ -21,11 +21,13 @@ final class VanityCollection: RouteCollection {
 
     let droplet: Droplet
     let apns: VaporAPNS
+    let wpns: WalletPassesNotificationService
     let updatePassword: String?
 
     init(droplet: Droplet) throws {
         self.droplet = droplet
         self.apns = try droplet.vaporAPNS()
+        self.wpns = try droplet.walletPassesNotificationService()
         self.updatePassword = try drop.config.extract("app", "updatePassword") as String?
     }
 
@@ -131,27 +133,56 @@ final class VanityCollection: RouteCollection {
             pass.passPath = passPath
             pass.updatedAt = Date()
             try pass.save()
-
-            let registrations = try Registration.query()
-                .filter("pass_id", pass.id!)
-                .run()
-            let deviceTokens = registrations.flatMap { $0.deviceToken }
-
-            let message = ApplePushMessage(topic: pass.passTypeIdentifier, priority: .immediately, payload: Payload(), sandbox: false)
-            self.apns.send(message, to: deviceTokens, perDeviceResultHandler: { result in
-                switch result {
-                case .success(_, _, let serviceStatus):
-                    print("Service status: \(serviceStatus)")
-                case .networkError(let error):
-                    print("Network error: \(error)")
-                case .error(_, _, let error):
-                    print("APNS error: \(error)")
-                }
-            })
+            
+            try self.sendNotifications(about: pass)
             
             return Response(status: .seeOther,
                             headers: [.location: String(describing: request.uri),
                                       .contentType: "application/vnd.apple.pkpass"])
+        }
+    }
+    
+    func sendNotifications(about pass: Pass) throws {
+        
+        let registrations = try Registration.query()
+            .filter("pass_id", pass.id!)
+            .run()
+        
+        var deviceTokensByClientApp: [Registration.Client: [String]] = [:]
+        registrations.forEach { (reg) in
+            let clientApp = reg.clientApp ?? .appleWallet
+            deviceTokensByClientApp[clientApp] = (deviceTokensByClientApp[clientApp] ?? []) + [reg.deviceToken!]
+        }
+        
+        drop.log.info("Notifying \(registrations.count) \(registrations.count == 1 ? "device" : "devices").")
+        
+        for (clientApp, deviceTokens) in deviceTokensByClientApp {
+            try notifyDevices(with: deviceTokens, running: clientApp, about: pass.passTypeIdentifier!)
+        }
+    }
+    
+    func notifyDevices(with deviceTokens: [String], running clientApp: Registration.Client, about passTypeIdentifier: String) throws {
+        
+        switch clientApp {
+        case .appleWallet:
+            let message = ApplePushMessage(topic: passTypeIdentifier, priority: .immediately, payload: Payload(), sandbox: false)
+            self.apns.send(message, to: deviceTokens) { result in
+                switch result {
+                case .success(_, _, let serviceStatus):
+                    drop.log.info("APNS: \(serviceStatus)")
+                case .networkError(let error):
+                    drop.log.error("APNS: \(error)")
+                case .error(_, _, let error):
+                    drop.log.error("APNS: \(error)")
+                }
+            }
+        case .walletPasses:
+            let response = try wpns.notifyDevices(with: deviceTokens, about: passTypeIdentifier)
+            if response.status.statusCode >= 300 {
+                drop.log.error("WPNS: \(response)")
+            } else {
+                drop.log.info("WPNS: \(response.status)")
+            }
         }
     }
 }

@@ -4,5 +4,8 @@
         "teamID": "$APNS_TEAM_ID",
         "privateKey": "$APNS_PRIVATE_KEY"
     },
+    "wpns": {
+        "key": "$WALLET_PASSES_KEY"
+    },
     "updatePassword": "$UPDATE_PASSWORD"
 }
