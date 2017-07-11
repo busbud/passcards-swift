@@ -166,7 +166,7 @@ final class WalletCollection: RouteCollection {
                     }
 
                     let updatedAt = pass.updatedAt ?? Date()
-                    if let dateString = request.headers[.ifModifiedSince], let date = rfc2616DateFormatter.date(from: dateString), date > updatedAt {
+                    if let dateString = request.headers[.ifModifiedSince], let date = rfc2616DateFormatter.date(from: dateString), date >= updatedAt {
                         return EmptyResponse(status: .notModified)
                     }
 
