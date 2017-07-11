@@ -28,14 +28,14 @@ final class WalletCollection: RouteCollection {
     }
 
     func isAuthenticated(request: Request, pass: Pass) -> Bool {
-        if let authorization = request.headers[.authorization], let authenticationToken = pass.authenticationToken {
-            return authorization == "ApplePass \(authenticationToken)"
+        if let authHeader = request.headers[.authorization], let authToken = authHeader.components(separatedBy: " ").last, let passToken = pass.authenticationToken {
+            return authToken == passToken
         } else {
             return false
         }
     }
 
-    func registerDevice(pass: Pass, deviceLibraryIdentifier: String, pushToken: String) throws -> Bool {
+    func registerDevice(pass: Pass, deviceLibraryIdentifier: String, pushToken: String, clientApp: Registration.Client) throws -> Bool {
         let registration: Registration
         let created: Bool
         do {
@@ -50,6 +50,7 @@ final class WalletCollection: RouteCollection {
                 registration = Registration()
                 registration.deviceLibraryIdentifier = deviceLibraryIdentifier
                 registration.passId = pass.id
+                registration.clientApp = clientApp
                 created = true
             }
         }
@@ -116,7 +117,8 @@ final class WalletCollection: RouteCollection {
                     }
 
                     registrations.post(String.self, String.self) { request, passTypeIdentifier, serialNumber in
-                        guard let pushToken = try request.json?.extract("pushToken") as String? else {
+                        guard let pushToken = try request.json?.extract("pushToken") as String?,
+                            let clientApp = request.clientApp else {
                             return EmptyResponse(status: .badRequest)
                         }
 
@@ -129,7 +131,7 @@ final class WalletCollection: RouteCollection {
                         }
 
                         let deviceLibraryIdentifier = try request.parameters.extract("deviceLibraryIdentifier") as String
-                        let created = try self.registerDevice(pass: pass, deviceLibraryIdentifier: deviceLibraryIdentifier, pushToken: pushToken)
+                        let created = try self.registerDevice(pass: pass, deviceLibraryIdentifier: deviceLibraryIdentifier, pushToken: pushToken, clientApp: clientApp)
                         return EmptyResponse(status: created ? .created : .ok)
                     }
 
@@ -190,5 +192,13 @@ final class WalletCollection: RouteCollection {
                 return EmptyResponse(status: Status.ok)
             }
         }
+    }
+}
+
+fileprivate extension Request {
+    
+    var clientApp: Registration.Client? {
+        guard let authorization = headers[.authorization], let prefix = authorization.components(separatedBy: " ").first else { return nil }
+        return Registration.Client(rawValue: prefix)
     }
 }
