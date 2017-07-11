@@ -2,8 +2,12 @@ import HTTP
 import Storage
 import Vapor
 
-func EmptyResponse(status: Status) -> Response {
-    return Response(status: status, headers: [.contentType: "text/plain"])
+func EmptyResponse(status: Status, headers: [HeaderKey: String] = [:]) -> Response {
+    var headers = headers
+    if status != .notModified {
+        headers[.contentType] = headers[.contentType] ?? "text/plain"
+    }
+    return Response(status: status, headers: headers)
 }
 
 let drop = Droplet()
